@@ -1,3 +1,7 @@
+use std::{fs, path::Path, str::FromStr};
+
+use anyhow::Context;
+
 pub trait TomlValueExt {
     fn default() -> Self;
 }
@@ -5,5 +9,26 @@ pub trait TomlValueExt {
 impl TomlValueExt for toml::Value {
     fn default() -> Self {
         Self::Table(toml::value::Table::default())
+    }
+}
+
+pub trait FromPath
+where
+    Self: Sized,
+{
+    fn from_path<P: AsRef<Path>>(path: P) -> anyhow::Result<Self>;
+}
+
+impl<T> FromPath for T
+where
+    T: FromStr<Err = anyhow::Error>,
+{
+    fn from_path<P: AsRef<Path>>(path: P) -> anyhow::Result<Self> {
+        let path = path.as_ref();
+        let obj = fs::read_to_string(path)
+            .context("failed to read file")?
+            .parse()
+            .context("failed to parse file contents")?;
+        Ok(obj)
     }
 }
