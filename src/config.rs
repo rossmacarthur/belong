@@ -8,15 +8,17 @@ use crate::util::TomlValueExt;
 // Config definitions
 /////////////////////////////////////////////////////////////////////////
 
+/// Project specific configuration.
 #[derive(Debug, Default, PartialEq, Deserialize, Serialize)]
 struct ProjectConfig {
     /// The title of the project.
     title: Option<String>,
 }
 
+/// The overall configuration for a project.
 #[derive(Debug, PartialEq, Deserialize, Serialize)]
 pub struct Config {
-    /// Project level configuration.
+    /// Project specific configuration.
     #[serde(default)]
     project: ProjectConfig,
     /// The rest of the TOML configuration file.

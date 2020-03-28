@@ -1,0 +1,17 @@
+<!DOCTYPE HTML>
+<html lang="en">
+    <head>
+      {% block head %}
+        {% if this.meta %}
+          <title>{{ this.meta.title }} - {{ config.project.title }}</title>
+        {% else %}
+          <title>{{ config.project.title }}</title>
+        {% endif %}
+      {% endblock head %}
+    </head>
+    <body>
+        <div id="content">
+          {% block content %}{% endblock content %}
+        </div>
+    </body>
+</html>
