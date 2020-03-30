@@ -137,8 +137,7 @@ impl Project {
     pub fn from_path(root_dir: PathBuf) -> anyhow::Result<Self> {
         // Load the config file from disk.
         let config_file = root_dir.join("belong.toml");
-        let config = Config::from_path(&config_file)
-            .with_context(|| format!("failed to load config file `{}`", config_file.display()))?;
+        let config = Config::from_path(&config_file).context("failed to load config")?;
 
         // Load theme theme from disk.
         let theme_dir = root_dir.join("theme");
@@ -169,7 +168,6 @@ impl Project {
         util::recreate_dir(&output_dir)?;
 
         let mut templates = tera::Tera::default();
-        templates.autoescape_on(vec![]);
         templates
             .add_raw_templates(self.theme.templates())
             .context("failed to register templates")?;
@@ -190,6 +188,11 @@ impl Project {
             let rendered = templates
                 .render("page.html", &page_ctx)
                 .with_context(|| format!("failed to render page `{}`", page.path.display()))?;
+
+            let dir = dst.parent().unwrap();
+            fs::create_dir_all(dir)
+                .with_context(|| format!("failed to create directory `{}`", dir.display()))?;
+
             fs::write(&dst, rendered)
                 .with_context(|| format!("failed to write page `{}`", dst.display()))?;
         }

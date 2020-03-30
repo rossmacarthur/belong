@@ -28,7 +28,7 @@ where
     fn from_path<P: AsRef<Path>>(path: P) -> anyhow::Result<Self> {
         let path = path.as_ref();
         let obj = fs::read_to_string(path)
-            .context("failed to read file")?
+            .with_context(|| format!("failed to read file `{}`", path.display()))?
             .parse()
             .context("failed to parse file contents")?;
         Ok(obj)
