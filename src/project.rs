@@ -1,6 +1,6 @@
 use std::{
     fs,
-    path::{Path, PathBuf},
+    path::{self, Path, PathBuf},
     str,
 };
 
@@ -29,6 +29,9 @@ struct FrontMatter {
     description: Option<String>,
     /// The date this page was written.
     date: Option<chrono::NaiveDate>,
+    /// The type of page this is.
+    #[serde(rename = "type")]
+    kind: Option<String>,
     /// The rest of the TOML front matter.
     #[serde(flatten)]
     rest: toml::Value,
@@ -76,6 +79,7 @@ impl Default for FrontMatter {
             title: None,
             description: None,
             date: None,
+            kind: None,
             rest: toml::Value::default(),
         }
     }
@@ -117,6 +121,21 @@ impl Page {
         })
     }
 
+    /// Naïve way of determining the path to the root of the project. This only
+    /// works because `self.path` is relative to the root of the project.
+    fn path_to_root(&self) -> PathBuf {
+        self.path
+            .parent()
+            .unwrap()
+            .components()
+            .fold(PathBuf::new(), |mut p, c| {
+                if let path::Component::Normal(_) = c {
+                    p.push("../");
+                }
+                p
+            })
+    }
+
     /// Get the URL for this page.
     fn url(&self) -> PathBuf {
         self.path.with_extension("html")
@@ -126,7 +145,7 @@ impl Page {
     fn context(&self) -> serde_json::Value {
         json!({
             "meta": self.front_matter,
-            "url": self.url().display().to_string(),
+            "url": self.url(),
             "content": Renderer::new(&self.contents).render()
         })
     }
@@ -163,36 +182,42 @@ impl Project {
         })
     }
 
+    pub fn output_dir(&self) -> PathBuf {
+        self.root_dir.join("public")
+    }
+
     pub fn render(&self) -> anyhow::Result<()> {
-        let output_dir = self.root_dir.join("public");
+        let output_dir = self.output_dir();
         util::recreate_dir(&output_dir)?;
 
         let mut templates = tera::Tera::default();
         templates
-            .add_raw_templates(self.theme.templates())
+            .add_raw_templates(self.theme.raw_templates())
             .context("failed to register templates")?;
 
         let mut base_ctx = tera::Context::new();
         base_ctx.insert("config", &self.config);
+        base_ctx.insert("path_to_root", "");
 
         let mut page_ctx = base_ctx.clone();
         let mut pages_ctx = Vec::new();
 
         for page in &self.pages {
-            let dst = output_dir.join(page.url());
-
             let this_ctx = page.context();
             page_ctx.insert("this", &this_ctx);
+            page_ctx.insert("path_to_root", &page.path_to_root());
+
             pages_ctx.push(this_ctx);
 
+            // Render page
             let rendered = templates
                 .render("page.html", &page_ctx)
                 .with_context(|| format!("failed to render page `{}`", page.path.display()))?;
-
+            // Write page to file
+            let dst = output_dir.join(page.url());
             let dir = dst.parent().unwrap();
             fs::create_dir_all(dir)
                 .with_context(|| format!("failed to create directory `{}`", dir.display()))?;
-
             fs::write(&dst, rendered)
                 .with_context(|| format!("failed to write page `{}`", dst.display()))?;
         }
@@ -200,11 +225,23 @@ impl Project {
         let mut index_ctx = base_ctx.clone();
         index_ctx.insert("pages", &serde_json::Value::Array(pages_ctx));
 
+        // Render page
         let rendered = templates
             .render("index.html", &index_ctx)
             .with_context(|| format!("failed to render page `index.html`"))?;
+        // Write page to file
         fs::write(output_dir.join("index.html"), rendered)
             .with_context(|| format!("failed to write page `index.html`"))?;
+
+        for stylesheet in self.theme.stylesheets() {
+            // Write stylesheet to file
+            let dst = output_dir.join(stylesheet.path());
+            let dir = dst.parent().unwrap();
+            fs::create_dir_all(dir)
+                .with_context(|| format!("failed to create directory `{}`", dir.display()))?;
+            fs::write(&dst, stylesheet.contents())
+                .with_context(|| format!("failed to render stylesheet `{}`", dst.display()))?;
+        }
 
         Ok(())
     }

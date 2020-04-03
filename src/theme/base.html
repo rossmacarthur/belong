@@ -1,17 +1,60 @@
 <!DOCTYPE HTML>
 <html lang="en">
-    <head>
-      {% block head %}
-        {% if this.meta %}
-          <title>{{ this.meta.title }} - {{ config.project.title }}</title>
-        {% else %}
-          <title>{{ config.project.title }}</title>
-        {% endif %}
-      {% endblock head %}
-    </head>
-    <body>
-        <div id="content">
-          {% block content %}{% endblock content %}
+
+<head>
+  <!-- Webpage generated using `belong` -->
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  {% if this.meta %}
+  <title>{{ this.meta.title }} - {{ config.project.title }}</title>
+  {% else %}
+  <title>{{ config.project.title }}</title>
+  {% endif %}
+
+  <!-- Bootstrap -->
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+    integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
+  <!-- Icons -->
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css"
+    integrity="sha384-wvfXpqpZZVQGK6TAh5PVlGOfQNHSoD2xbE+QkPxCAFlNEevoEH3Sl0sibVcOQVnN" crossorigin="anonymous">
+  <!-- Highlight JS -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.18.1/styles/atom-one-dark.min.css">
+  <!-- Custom styles -->
+  <link rel="stylesheet" href="{{ path_to_root | safe }}css/custom.css">
+</head>
+
+<body>
+  <!-- Header -->
+  <header class="container text-center pt-2 mt-2 pb-5 mb-5">
+    <div class="text-muted title">
+      {{ config.project.title }}
+    </div>
+    <div class="container text-muted pt-3">
+      <div class="row justify-content-md-center">
+        <div class="col-md-1 px-1">
+          <a href="{{ path_to_root | safe }}index.html">posts</a>
         </div>
-    </body>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main content -->
+  <main role="main" class="container">
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer pb-4 pt-5">
+    <div class="container text-center">
+      <span class="text-muted">Website built with <span class="fa fa-heart"></span> using <a
+          href="https://github.com/rossmacarthur/belong">belong</a>.</span>
+    </div>
+  </footer>
+
+  <!-- Highlight JS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.18.1/highlight.min.js"></script>
+  <script>hljs.initHighlightingOnLoad();</script>
+
+</body>
+
 </html>

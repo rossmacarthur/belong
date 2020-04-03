@@ -1,0 +1,42 @@
+html {
+  font-size: 20px;
+}
+
+main {
+  max-width: 900px !important;
+}
+
+.title {
+  letter-spacing: 3px;
+  text-transform: uppercase;
+}
+
+h1, h2, h3, h4, h5, h6, .post-link {
+  margin-top: 2rem;
+  margin-bottom: 1.5rem;
+  letter-spacing: 1px;
+  font-weight: 900;
+}
+
+.post-link {
+  font-size: 2rem;
+}
+
+p {
+  text-align: justify;
+}
+
+a {
+  outline: none;
+}
+
+code {
+  border-radius: 3px;
+}
+
+p code {
+  color: #c678dd;
+  background-color: rgb(245, 247, 249);
+  margin: 0px 1px;
+  padding: 3px 6px;
+}

@@ -1,7 +1,14 @@
 {% extends "base.html" %}
 
 {% block content %}
-  {% for page in pages %}
-    <h3><a href="{{ page.url }}">{{ page.meta.title }}</a></h3>
+  {% for page in pages | filter(attribute="meta.type", value="post") | sort(attribute="meta.date") | reverse %}
+    <div class="py-2">
+      <div>
+        <small class="text-muted">{{ page.meta.date | date(format="%b %d, %Y") }}</small>
+      </div>
+      <div>
+        <a class="post-link" href="{{ path_to_root ~ page.url | safe }}">{{ page.meta.title }}</a>
+      </div>
+    </div>
   {% endfor %}
 {% endblock content %}

@@ -1,10 +1,20 @@
-use std::{borrow::Cow, fs, path::Path};
+use std::{
+    borrow::Cow,
+    fs,
+    path::{Path, PathBuf},
+};
 
 use anyhow::Context;
 
-const BASE: &'static str = include_str!("theme/base.html");
-const INDEX: &'static str = include_str!("theme/index.html");
-const PAGE: &'static str = include_str!("theme/page.html");
+mod template {
+    pub const BASE: &'static str = include_str!("theme/base.html");
+    pub const INDEX: &'static str = include_str!("theme/index.html");
+    pub const PAGE: &'static str = include_str!("theme/page.html");
+}
+
+mod stylesheet {
+    pub const CUSTOM: &'static str = include_str!("theme/css/custom.css");
+}
 
 /////////////////////////////////////////////////////////////////////////
 // Theme definitions
@@ -13,6 +23,14 @@ const PAGE: &'static str = include_str!("theme/page.html");
 /// Represents an HTML template to use for rendering.
 #[derive(Debug, PartialEq)]
 pub struct Template {
+    name: &'static str,
+    contents: Cow<'static, str>,
+}
+
+/// Represents a CSS stylesheet to render.
+#[derive(Debug, PartialEq)]
+pub struct Stylesheet {
+    path: PathBuf,
     contents: Cow<'static, str>,
 }
 
@@ -20,30 +38,30 @@ pub struct Template {
 #[derive(Debug, Default, PartialEq)]
 pub struct Theme {
     /// Each of the theme's templates.
-    templates: Vec<(&'static str, Template)>,
+    templates: Vec<Template>,
+    /// Each of the theme's stylesheets.
+    stylesheets: Vec<Stylesheet>,
 }
 
 /////////////////////////////////////////////////////////////////////////
 // Theme implementations
 /////////////////////////////////////////////////////////////////////////
 
-impl From<&'static str> for Template {
-    fn from(s: &'static str) -> Self {
-        Self {
-            contents: Cow::from(s),
-        }
-    }
-}
-
-impl From<String> for Template {
-    fn from(s: String) -> Self {
-        Self {
-            contents: Cow::from(s),
-        }
-    }
-}
-
 impl Template {
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn contents(&self) -> &str {
+        &self.contents
+    }
+}
+
+impl Stylesheet {
+    pub fn path(&self) -> &Path {
+        &self.path
+    }
+
     pub fn contents(&self) -> &str {
         &self.contents
     }
@@ -52,28 +70,55 @@ impl Template {
 impl Theme {
     /// Load a `Theme` from the given directory.
     pub fn from_path(theme_dir: &Path) -> anyhow::Result<Self> {
-        let defaults = &[
-            ("base.html", BASE),
-            ("index.html", INDEX),
-            ("page.html", PAGE),
+        // Load the templates from disk, or set defaults.
+        let defaults = vec![
+            ("base.html", template::BASE),
+            ("index.html", template::INDEX),
+            ("page.html", template::PAGE),
         ];
         let mut templates = Vec::with_capacity(defaults.len());
-        for (name, default) in defaults {
+
+        for (name, default) in defaults.into_iter() {
             let path = theme_dir.join(name);
-            let template = if path.exists() {
-                Template::from(fs::read_to_string(&path).context("failed to read file")?)
+            let contents = if path.exists() {
+                Cow::from(fs::read_to_string(&path).context("failed to read file")?)
             } else {
-                Template::from(*default)
+                Cow::from(default)
             };
-            templates.push((*name, template));
+            templates.push(Template { name, contents });
         }
-        Ok(Self { templates })
+
+        // Load the stylesheets from disk, or set defaults.
+        let defaults = vec![(PathBuf::from("css/custom.css"), stylesheet::CUSTOM)];
+        let mut stylesheets = Vec::with_capacity(defaults.len());
+
+        for (relative_path, default) in defaults.into_iter() {
+            let path = theme_dir.join(&relative_path);
+            let contents = if path.exists() {
+                Cow::from(fs::read_to_string(&path).context("failed to read file")?)
+            } else {
+                Cow::from(default)
+            };
+            stylesheets.push(Stylesheet {
+                path: relative_path,
+                contents,
+            })
+        }
+
+        Ok(Self {
+            templates,
+            stylesheets,
+        })
     }
 
-    pub fn templates(&self) -> Vec<(&'static str, &str)> {
+    pub fn raw_templates(&self) -> Vec<(&str, &str)> {
         self.templates
             .iter()
-            .map(|(name, template)| (*name, template.contents()))
+            .map(|template| (template.name(), template.contents()))
             .collect()
+    }
+
+    pub fn stylesheets(&self) -> &[Stylesheet] {
+        &self.stylesheets
     }
 }
