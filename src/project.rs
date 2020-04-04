@@ -228,16 +228,15 @@ impl Project {
                 .with_context(|| format!("failed to write page `{}`", dst.display()))?;
         }
 
-        let mut index_ctx = base_ctx.clone();
-        index_ctx.insert("pages", &serde_json::Value::Array(pages_ctx));
+        base_ctx.insert("pages", &serde_json::Value::Array(pages_ctx));
 
         // Render page
         let rendered = templates
-            .render("index.html", &index_ctx)
-            .with_context(|| format!("failed to render page `index.html`"))?;
+            .render("index.html", &base_ctx)
+            .context("failed to render page `index.html`")?;
         // Write page to file
         fs::write(output_dir.join("index.html"), rendered)
-            .with_context(|| format!("failed to write page `index.html`"))?;
+            .context("failed to write page `index.html`")?;
 
         for stylesheet in self.theme.stylesheets() {
             // Write stylesheet to file
@@ -400,8 +399,13 @@ testing...
 
 Caused by:
     0: failed to read file
-    1: No such file or directory (os error 2)"#,
-                root_dir.join("belong.toml").display()
+    1: {} (os error 2)"#,
+                root_dir.join("belong.toml").display(),
+                if cfg!(target_os = "windows") {
+                    "The system cannot find the file specified."
+                } else {
+                    "No such file or directory"
+                }
             )
         )
     }
@@ -437,18 +441,19 @@ bad toml
 +++
 testing...
 "#;
-        fs::write(root_dir.join("src/test.md"), &page_content).unwrap();
+        let page_path = root_dir.join("src").join("test.md");
+        fs::write(&page_path, &page_content).unwrap();
         let err = Project::from_path(root_dir.clone()).unwrap_err();
         assert_eq!(
             format!("{:?}", err),
             format!(
-                r#"failed to load page `{}/src/test.md`
+                r#"failed to load page `{}`
 
 Caused by:
     0: failed to parse file contents
     1: failed to parse front matter
     2: expected an equals, found an identifier at line 2 column 5"#,
-                root_dir.display()
+                page_path.display()
             )
         );
     }
@@ -475,7 +480,7 @@ date = "2020-03-2"
 +++
 testing...
 "#;
-        let page_path = root_dir.join("src/test.md");
+        let page_path = root_dir.join("src").join("test.md");
         fs::write(&page_path, &page_content).unwrap();
         let project = Project::from_path(root_dir.clone()).unwrap();
         assert_eq!(

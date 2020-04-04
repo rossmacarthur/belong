@@ -7,13 +7,13 @@ use std::{
 use anyhow::Context;
 
 mod template {
-    pub const BASE: &'static str = include_str!("theme/base.html");
-    pub const INDEX: &'static str = include_str!("theme/index.html");
-    pub const PAGE: &'static str = include_str!("theme/page.html");
+    pub const BASE: &str = include_str!("theme/base.html");
+    pub const INDEX: &str = include_str!("theme/index.html");
+    pub const PAGE: &str = include_str!("theme/page.html");
 }
 
 mod stylesheet {
-    pub const CUSTOM: &'static str = include_str!("theme/css/custom.css");
+    pub const CUSTOM: &str = include_str!("theme/css/custom.css");
 }
 
 /////////////////////////////////////////////////////////////////////////

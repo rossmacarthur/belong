@@ -21,7 +21,7 @@ fn fix_markdown_url(url: CowStr) -> CowStr {
 }
 
 /// Fix Markdown links by replacing `.md` with `.html`.
-fn fix_markdown_links<'e>(event: Event<'e>) -> Event<'e> {
+fn fix_markdown_links(event: Event) -> Event {
     match event {
         Event::Start(Tag::Link(link_type, url, title)) => {
             Event::Start(Tag::Link(link_type, fix_markdown_url(url), title))
