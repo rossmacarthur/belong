@@ -156,7 +156,8 @@ impl Project {
     pub fn from_path(root_dir: PathBuf) -> anyhow::Result<Self> {
         // Load the config file from disk.
         let config_file = root_dir.join("belong.toml");
-        let config = Config::from_path(&config_file).context("failed to load config")?;
+        let config = Config::from_path(&config_file)
+            .with_context(|| format!("failed to load config `{}`", &config_file.display()))?;
 
         // Load theme theme from disk.
         let theme_dir = root_dir.join("theme");
@@ -188,7 +189,12 @@ impl Project {
 
     pub fn render(&self) -> anyhow::Result<()> {
         let output_dir = self.output_dir();
-        util::recreate_dir(&output_dir)?;
+        util::recreate_dir(&output_dir).with_context(|| {
+            format!(
+                "failed to recreate output directory `{}`",
+                output_dir.display()
+            )
+        })?;
 
         let mut templates = tera::Tera::default();
         templates
@@ -336,6 +342,7 @@ testing...
                     title: Some("Hello World!".to_string()),
                     description: Some("My first post!".to_string()),
                     date: Some(chrono::NaiveDate::from_ymd(2020, 3, 21)),
+                    kind: None,
                     rest: toml! {
                         testing_int = 5
                         testing_str = "hello"
@@ -346,53 +353,91 @@ testing...
     }
 
     #[test]
-    fn project_from_path_empty() {
-        let root_dir = tempfile::tempdir().unwrap().into_path();
-        std::fs::create_dir(root_dir.join("src")).unwrap();
-        std::fs::write(root_dir.join("belong.toml"), "").unwrap();
+    fn page_path_to_root_no_dir() {
+        let page = Page {
+            path: "index.html".into(),
+            ..Default::default()
+        };
+        assert_eq!(page.path_to_root(), Path::new(""));
+    }
 
+    #[test]
+    fn page_path_to_root_multi_dir() {
+        let page = Page {
+            path: "path/segment/index.html".into(),
+            ..Default::default()
+        };
+        assert_eq!(page.path_to_root(), Path::new("../../"));
+    }
+
+    #[test]
+    fn project_from_path_empty() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let root_dir = temp_dir.path().to_path_buf();
+        fs::create_dir(root_dir.join("src")).unwrap();
+        fs::write(root_dir.join("belong.toml"), "").unwrap();
         let project = Project::from_path(root_dir.clone()).unwrap();
         assert_eq!(
             project,
             Project {
-                root_dir,
+                root_dir: root_dir.clone(),
                 config: Config::default(),
-                theme: Theme::default(),
+                theme: Theme::from_path(&root_dir.join("theme")).unwrap(),
                 pages: Vec::new(),
             }
         )
     }
 
     #[test]
-    fn project_from_path_bad_config() {
-        let root_dir = tempfile::tempdir().unwrap().into_path();
-        std::fs::write(root_dir.join("belong.toml"), "very bad toml").unwrap();
+    fn project_from_path_missing_config() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let root_dir = temp_dir.path().to_path_buf();
         let err = Project::from_path(root_dir.clone()).unwrap_err();
         assert_eq!(
             format!("{:?}", err),
             format!(
-                r#"failed to load config file `{}/belong.toml`
+                r#"failed to load config `{}`
+
+Caused by:
+    0: failed to read file
+    1: No such file or directory (os error 2)"#,
+                root_dir.join("belong.toml").display()
+            )
+        )
+    }
+
+    #[test]
+    fn project_from_path_bad_config() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let root_dir = temp_dir.path().to_path_buf();
+        fs::write(root_dir.join("belong.toml"), "very bad toml").unwrap();
+        let err = Project::from_path(root_dir.clone()).unwrap_err();
+        assert_eq!(
+            format!("{:?}", err),
+            format!(
+                r#"failed to load config `{}`
 
 Caused by:
     0: failed to parse file contents
     1: expected an equals, found an identifier at line 1 column 6"#,
-                root_dir.display()
+                root_dir.join("belong.toml").display()
             )
         );
     }
 
     #[test]
     fn project_from_path_bad_page() {
-        let root_dir = tempfile::tempdir().unwrap().into_path();
-        std::fs::create_dir(root_dir.join("src")).unwrap();
-        std::fs::write(root_dir.join("belong.toml"), "").unwrap();
+        let temp_dir = tempfile::tempdir().unwrap();
+        let root_dir = temp_dir.path().to_path_buf();
+        fs::create_dir(root_dir.join("src")).unwrap();
+        fs::write(root_dir.join("belong.toml"), "").unwrap();
         let page_content = r#"
 +++
 bad toml
 +++
 testing...
 "#;
-        std::fs::write(root_dir.join("src/test.md"), &page_content).unwrap();
+        fs::write(root_dir.join("src/test.md"), &page_content).unwrap();
         let err = Project::from_path(root_dir.clone()).unwrap_err();
         assert_eq!(
             format!("{:?}", err),
@@ -410,9 +455,10 @@ Caused by:
 
     #[test]
     fn project_from_path_custom_config_pages_and_templates() {
-        let root_dir = tempfile::tempdir().unwrap().into_path();
+        let temp_dir = tempfile::tempdir().unwrap();
+        let root_dir = temp_dir.path().to_path_buf();
         let src_dir = root_dir.join("src");
-        std::fs::create_dir(&src_dir).unwrap();
+        fs::create_dir(&src_dir).unwrap();
         let config_content = toml!(
             [project]
             title = "My Blog"
@@ -421,23 +467,23 @@ Caused by:
             another = 5
         )
         .to_string();
-        std::fs::write(root_dir.join("belong.toml"), &config_content).unwrap();
+        fs::write(root_dir.join("belong.toml"), &config_content).unwrap();
         let page_content = r#"
 +++
 title = "Hello World!"
-date = "2020-03-21"
+date = "2020-03-2"
 +++
 testing...
 "#;
         let page_path = root_dir.join("src/test.md");
-        std::fs::write(&page_path, &page_content).unwrap();
+        fs::write(&page_path, &page_content).unwrap();
         let project = Project::from_path(root_dir.clone()).unwrap();
         assert_eq!(
             project,
             Project {
-                root_dir,
+                root_dir: root_dir.clone(),
                 config: str::FromStr::from_str(&config_content).unwrap(),
-                theme: Theme::default(),
+                theme: Theme::from_path(&root_dir.join("theme")).unwrap(),
                 pages: vec![Page::from_path(&src_dir, &page_path).unwrap()],
             }
         )

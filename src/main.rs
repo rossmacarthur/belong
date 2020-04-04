@@ -15,7 +15,7 @@ fn main() -> anyhow::Result<()> {
 
     if should_open {
         open::that(project.output_dir().join("index.html"))
-            .context("failed to open web page in broswer")?;
+            .context("failed to open web page in browser")?;
     }
 
     Ok(())

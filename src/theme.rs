@@ -35,7 +35,7 @@ pub struct Stylesheet {
 }
 
 /// Represents the theme to use for rendering.
-#[derive(Debug, Default, PartialEq)]
+#[derive(Debug, PartialEq)]
 pub struct Theme {
     /// Each of the theme's templates.
     templates: Vec<Template>,
