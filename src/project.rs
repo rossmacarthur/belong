@@ -1,4 +1,5 @@
 use std::{
+    ffi::OsString,
     fs,
     path::{self, Path, PathBuf},
     str,
@@ -13,7 +14,7 @@ use crate::{
     config::Config,
     render::Renderer,
     theme::Theme,
-    util::{self, FromPath, TomlValueExt},
+    util::{self, FromPath, Join, TomlValueExt},
 };
 
 /////////////////////////////////////////////////////////////////////////
@@ -121,31 +122,38 @@ impl Page {
         })
     }
 
+    /// Get the URL path for this page, relative to the root of the project.
+    fn url_path(&self) -> OsString {
+        self.path
+            .with_extension("html")
+            .components()
+            .map(|c| c.as_os_str())
+            .collect::<Vec<_>>()
+            .join("/")
+    }
+
     /// Naïve way of determining the path to the root of the project. This only
     /// works because `self.path` is relative to the root of the project.
-    fn path_to_root(&self) -> PathBuf {
+    fn url_path_to_root(&self) -> OsString {
         self.path
             .parent()
             .unwrap()
             .components()
-            .fold(PathBuf::new(), |mut p, c| {
+            .fold(OsString::new(), |mut acc, c| {
                 if let path::Component::Normal(_) = c {
-                    p.push("../");
+                    acc.push("../");
+                } else {
+                    panic!("unexpected path component");
                 }
-                p
+                acc
             })
-    }
-
-    /// Get the URL for this page.
-    fn url(&self) -> PathBuf {
-        self.path.with_extension("html")
     }
 
     /// Rendering context for a `Page`.
     fn context(&self) -> serde_json::Value {
         json!({
             "meta": self.front_matter,
-            "url": self.url(),
+            "path": self.url_path(),
             "content": Renderer::new(&self.contents).render()
         })
     }
@@ -211,7 +219,7 @@ impl Project {
         for page in &self.pages {
             let this_ctx = page.context();
             page_ctx.insert("this", &this_ctx);
-            page_ctx.insert("path_to_root", &page.path_to_root());
+            page_ctx.insert("path_to_root", &page.url_path_to_root());
 
             pages_ctx.push(this_ctx);
 
@@ -220,7 +228,7 @@ impl Project {
                 .render("page.html", &page_ctx)
                 .with_context(|| format!("failed to render page `{}`", page.path.display()))?;
             // Write page to file
-            let dst = output_dir.join(page.url());
+            let dst = output_dir.join(&page.path);
             let dir = dst.parent().unwrap();
             fs::create_dir_all(dir)
                 .with_context(|| format!("failed to create directory `{}`", dir.display()))?;
@@ -259,6 +267,8 @@ impl Project {
 #[cfg(test)]
 mod test {
     use super::*;
+
+    use std::panic;
 
     use toml::toml;
 
@@ -352,21 +362,49 @@ testing...
     }
 
     #[test]
-    fn page_path_to_root_no_dir() {
+    fn page_url_path_multi_dir() {
+        let page = Page {
+            path: ["path", "segment", "index.html"].iter().collect(),
+            ..Default::default()
+        };
+        assert_eq!(page.url_path(), OsString::from("path/segment/index.html"));
+    }
+
+    #[test]
+    fn page_url_path_no_dir() {
+        let page = Page {
+            path: PathBuf::from("index.html"),
+            ..Default::default()
+        };
+        assert_eq!(page.url_path(), OsString::from("index.html"));
+    }
+
+    #[test]
+    fn page_url_path_to_root_no_dir() {
         let page = Page {
             path: "index.html".into(),
             ..Default::default()
         };
-        assert_eq!(page.path_to_root(), Path::new(""));
+        assert_eq!(page.url_path_to_root(), OsString::from(""));
     }
 
     #[test]
-    fn page_path_to_root_multi_dir() {
+    fn page_url_path_to_root_multi_dir() {
         let page = Page {
-            path: "path/segment/index.html".into(),
+            path: ["path", "segment", "index.html"].iter().collect(),
             ..Default::default()
         };
-        assert_eq!(page.path_to_root(), Path::new("../../"));
+        assert_eq!(page.url_path_to_root(), OsString::from("../../"));
+    }
+
+    #[test]
+    #[should_panic(expected = "unexpected path component")]
+    fn page_url_path_to_root_unexpected_path_component() {
+        let page = Page {
+            path: ["/", "path", "segment"].iter().collect(),
+            ..Default::default()
+        };
+        page.url_path_to_root();
     }
 
     #[test]

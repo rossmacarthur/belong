@@ -1,4 +1,9 @@
-use std::{fs, io, path::Path, str::FromStr};
+use std::{
+    ffi::{OsStr, OsString},
+    fs, io,
+    path::Path,
+    str::FromStr,
+};
 
 use anyhow::Context;
 
@@ -32,6 +37,38 @@ where
             .parse()
             .context("failed to parse file contents")?;
         Ok(obj)
+    }
+}
+
+/// Copy of the `std::slice::Join` trait so we can implement it for standard
+/// library types like `&[&OsStr]`.
+///
+/// See https://github.com/rust-lang/rust/issues/61133.
+pub trait Join<S> {
+    type Output;
+    fn join(self, sep: S) -> Self::Output;
+}
+
+impl<S> Join<S> for &[&OsStr]
+where
+    S: AsRef<OsStr>,
+{
+    type Output = OsString;
+
+    fn join(self, sep: S) -> Self::Output {
+        let sep = sep.as_ref();
+        let mut result = OsString::new();
+        match self.split_first() {
+            Some((first, rest)) => {
+                result.push(first);
+                for element in rest {
+                    result.push(sep);
+                    result.push(element);
+                }
+                result
+            }
+            None => result,
+        }
     }
 }
 
