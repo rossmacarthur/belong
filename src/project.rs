@@ -1,6 +1,7 @@
 use std::{
     ffi::OsString,
     fs,
+    io::Write,
     path::{self, Path, PathBuf},
     str,
 };
@@ -55,6 +56,13 @@ pub struct Page {
     front_matter: FrontMatter,
     /// The contents of the page.
     contents: String,
+}
+
+/// A builder for `Project`.
+#[derive(Debug)]
+pub struct Builder {
+    root_dir: PathBuf,
+    gitignore: bool,
 }
 
 /// Represents our entire project.
@@ -159,9 +167,70 @@ impl Page {
     }
 }
 
+impl Builder {
+    /// Create a new `Builder`.
+    pub fn new<P>(root_dir: P) -> Self
+    where
+        P: Into<PathBuf>,
+    {
+        let root_dir = root_dir.into();
+        Self {
+            root_dir,
+            gitignore: true,
+        }
+    }
+
+    /// Whether to create a `.gitignore` file.
+    pub fn gitignore(mut self, gitignore: bool) -> Self {
+        self.gitignore = gitignore;
+        self
+    }
+
+    /// Build the `Project` and return the built project.
+    pub fn build(self) -> anyhow::Result<()> {
+        // Create directory structure.
+        let src_dir = self.root_dir.join("src");
+        fs::create_dir_all(&src_dir)
+            .with_context(|| format!("failed to create src directory `{}`", src_dir.display()))?;
+
+        // Create .gitignore file.
+        if self.gitignore {
+            let gitignore_file = self.root_dir.join(".gitignore");
+            let mut file = fs::OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(&gitignore_file)
+                .with_context(|| {
+                    format!(
+                        "failed to create gitignore file `{}`",
+                        gitignore_file.display()
+                    )
+                })?;
+            writeln!(file, "public").context("failed to write to gitignore file")?;
+        }
+
+        // Create config file.
+        let config_file = self.root_dir.join("belong.toml");
+        let mut file = fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&config_file)
+            .with_context(|| format!("failed to create config file `{}`", config_file.display()))?;
+        file.write(&toml::to_vec(&Config::default()).unwrap())
+            .context("failed to write config to config file")?;
+
+        Ok(())
+    }
+}
+
 impl Project {
     /// Load a `Project` from the given directory.
-    pub fn from_path(root_dir: PathBuf) -> anyhow::Result<Self> {
+    pub fn from_path<P>(root_dir: P) -> anyhow::Result<Self>
+    where
+        P: Into<PathBuf>,
+    {
+        let root_dir = root_dir.into();
+
         // Load the config file from disk.
         let config_file = root_dir.join("belong.toml");
         let config = Config::from_path(&config_file)

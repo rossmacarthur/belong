@@ -4,4 +4,4 @@ mod render;
 mod theme;
 mod util;
 
-pub use project::Project;
+pub use project::{Builder, Project};
