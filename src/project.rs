@@ -6,10 +6,10 @@ use std::{
     str,
 };
 
-use anyhow::Context;
+use anyhow::{anyhow, Context};
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
-use serde_json::json;
+use serde_json::{self as json, json};
 
 use crate::{
     config::Config,
@@ -32,7 +32,6 @@ struct FrontMatter {
     /// The date this page was written.
     date: Option<chrono::NaiveDate>,
     /// The type of page this is.
-    #[serde(rename = "type")]
     kind: Option<String>,
     /// The rest of the TOML front matter.
     #[serde(flatten)]
@@ -131,39 +130,42 @@ impl Page {
     }
 
     /// Get the URL path for this page, relative to the root of the project.
-    fn url_path(&self) -> OsString {
+    fn url_path(&self) -> anyhow::Result<String> {
         self.path
             .with_extension("html")
             .components()
             .map(|c| c.as_os_str())
             .collect::<Vec<_>>()
             .join("/")
+            .into_string()
+            .map_err(|_| anyhow!("page path (and subsequently the URL) is not valid UTF-8"))
     }
 
     /// Naïve way of determining the path to the root of the project. This only
     /// works because `self.path` is relative to the root of the project.
-    fn url_path_to_root(&self) -> OsString {
+    fn url_path_to_root(&self) -> anyhow::Result<String> {
         self.path
             .parent()
             .unwrap()
             .components()
-            .fold(OsString::new(), |mut acc, c| {
-                if let path::Component::Normal(_) = c {
+            .fold(OsString::new(), |mut acc, c| match c {
+                path::Component::Normal(_) => {
                     acc.push("../");
-                } else {
-                    panic!("unexpected path component");
+                    acc
                 }
-                acc
+                _ => panic!("unexpected path component"),
             })
+            .into_string()
+            .map_err(|_| anyhow!("page path (and subsequently the URL) is not valid UTF-8"))
     }
 
     /// Rendering context for a `Page`.
-    fn context(&self) -> serde_json::Value {
-        json!({
+    fn context(&self) -> anyhow::Result<json::Value> {
+        Ok(json!({
             "meta": self.front_matter,
-            "path": self.url_path(),
+            "path": self.url_path()?,
             "content": Renderer::new(&self.contents).render()
-        })
+        }))
     }
 }
 
@@ -277,6 +279,8 @@ impl Project {
         templates
             .add_raw_templates(self.theme.raw_templates())
             .context("failed to register templates")?;
+        // override the `filter` filter to allow null value argument.
+        templates.register_filter("filter", util::filter);
 
         let mut base_ctx = tera::Context::new();
         base_ctx.insert("config", &self.config);
@@ -286,10 +290,14 @@ impl Project {
         let mut pages_ctx = Vec::new();
 
         for page in &self.pages {
-            let this_ctx = page.context();
+            let this_ctx = page.context().with_context(|| {
+                format!(
+                    "failed to generate render context for page `{}`",
+                    page.path.display()
+                )
+            })?;
             page_ctx.insert("this", &this_ctx);
-            page_ctx.insert("path_to_root", &page.url_path_to_root());
-
+            page_ctx.insert("path_to_root", &page.url_path_to_root()?);
             pages_ctx.push(this_ctx);
 
             // Render page
@@ -297,7 +305,7 @@ impl Project {
                 .render("page.html", &page_ctx)
                 .with_context(|| format!("failed to render page `{}`", page.path.display()))?;
             // Write page to file
-            let dst = output_dir.join(&page.path);
+            let dst = output_dir.join(&page.path.with_extension("html"));
             let dir = dst.parent().unwrap();
             fs::create_dir_all(dir)
                 .with_context(|| format!("failed to create directory `{}`", dir.display()))?;
@@ -305,7 +313,7 @@ impl Project {
                 .with_context(|| format!("failed to write page `{}`", dst.display()))?;
         }
 
-        base_ctx.insert("pages", &serde_json::Value::Array(pages_ctx));
+        base_ctx.insert("pages", &json::Value::Array(pages_ctx));
 
         // Render page
         let rendered = templates
@@ -436,7 +444,7 @@ testing...
             path: ["path", "segment", "index.html"].iter().collect(),
             ..Default::default()
         };
-        assert_eq!(page.url_path(), OsString::from("path/segment/index.html"));
+        assert_eq!(page.url_path().unwrap(), "path/segment/index.html");
     }
 
     #[test]
@@ -445,7 +453,7 @@ testing...
             path: PathBuf::from("index.html"),
             ..Default::default()
         };
-        assert_eq!(page.url_path(), OsString::from("index.html"));
+        assert_eq!(page.url_path().unwrap(), "index.html");
     }
 
     #[test]
@@ -454,7 +462,7 @@ testing...
             path: "index.html".into(),
             ..Default::default()
         };
-        assert_eq!(page.url_path_to_root(), OsString::from(""));
+        assert_eq!(page.url_path_to_root().unwrap(), "");
     }
 
     #[test]
@@ -463,7 +471,7 @@ testing...
             path: ["path", "segment", "index.html"].iter().collect(),
             ..Default::default()
         };
-        assert_eq!(page.url_path_to_root(), OsString::from("../../"));
+        assert_eq!(page.url_path_to_root().unwrap(), "../../");
     }
 
     #[test]
@@ -473,7 +481,7 @@ testing...
             path: ["/", "path", "segment"].iter().collect(),
             ..Default::default()
         };
-        page.url_path_to_root();
+        page.url_path_to_root().unwrap();
     }
 
     #[test]

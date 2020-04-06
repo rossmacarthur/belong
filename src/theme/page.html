@@ -1,5 +1,15 @@
 {% extends "base.html" %}
 
 {% block content %}
+  <div class="py-2">
+    {% if this.meta.date %}
+      <div>
+        <small class="text-muted">{{ this.meta.date | date(format="%b %d, %Y") }}</small>
+      </div>
+    {% endif %}
+    {% if this.meta.title %}
+      <h1 class="page-title">{{ this.meta.title }}</h1>
+    {% endif %}
+  </div>
   {{ this.content | safe }}
 {% endblock content %}

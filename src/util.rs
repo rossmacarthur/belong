@@ -1,4 +1,5 @@
 use std::{
+    collections::HashMap,
     ffi::{OsStr, OsString},
     fs, io,
     path::Path,
@@ -6,6 +7,7 @@ use std::{
 };
 
 use anyhow::Context;
+use serde_json as json;
 
 pub trait TomlValueExt {
     fn default() -> Self;
@@ -82,4 +84,38 @@ pub fn recreate_dir<P: AsRef<Path>>(dir: P) -> anyhow::Result<()> {
     }
     fs::create_dir_all(&dir).context("failed to create directory")?;
     Ok(())
+}
+
+/// A Tera template filter to filter array values.
+///
+/// This is copied from Tera source code to allow `value` arguments to be null.
+/// In the case where `value` arguments are null, only null values will be
+/// filtered out.
+pub fn filter(
+    value: &json::Value,
+    args: &HashMap<String, json::Value>,
+) -> tera::Result<json::Value> {
+    let arr = tera::try_get_value!("filter", "value", Vec<json::Value>, value);
+    let key = match args.get("attribute") {
+        Some(val) => tera::try_get_value!("filter", "attribute", String, val),
+        None => {
+            return Err(tera::Error::msg(
+                "The `filter` filter has to have an `attribute` argument",
+            ))
+        }
+    };
+    let value = args.get("value").unwrap_or(&json::Value::Null);
+    let json_pointer = ["/", &key.replace(".", "/")].concat();
+    let filtered = arr
+        .into_iter()
+        .filter(|v| {
+            let val = v.pointer(&json_pointer).unwrap_or(&json::Value::Null);
+            if value.is_null() {
+                !val.is_null()
+            } else {
+                val == value
+            }
+        })
+        .collect::<Vec<_>>();
+    Ok(tera::to_value(filtered).unwrap())
 }
