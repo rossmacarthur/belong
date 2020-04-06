@@ -18,6 +18,7 @@ jobs:
       with:
         toolchain: ${{ matrix.toolchain }}
         profile: minimal
+        override: true
 
     - name: Test
       run: cargo test
@@ -31,6 +32,7 @@ jobs:
     - uses: actions-rs/toolchain@v1
       with:
         toolchain: stable
+        override: true
 
     - name: Rustfmt
       run: cargo fmt -- --check
