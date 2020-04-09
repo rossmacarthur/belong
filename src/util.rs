@@ -2,6 +2,7 @@ use std::{
     collections::HashMap,
     ffi::{OsStr, OsString},
     fs, io,
+    io::Write,
     path::Path,
     str::FromStr,
 };
@@ -75,7 +76,10 @@ where
 }
 
 /// Completely delete and recreate a directory.
-pub fn recreate_dir<P: AsRef<Path>>(dir: P) -> anyhow::Result<()> {
+pub fn recreate_dir<P>(dir: P) -> anyhow::Result<()>
+where
+    P: AsRef<Path>,
+{
     let dir = dir.as_ref();
     if let Err(e) = fs::remove_dir_all(&dir) {
         if e.kind() != io::ErrorKind::NotFound {
@@ -83,6 +87,24 @@ pub fn recreate_dir<P: AsRef<Path>>(dir: P) -> anyhow::Result<()> {
         }
     }
     fs::create_dir_all(&dir).context("failed to create directory")?;
+    Ok(())
+}
+
+/// Create and write to a file if it doesn't exist.
+pub fn write_new<P, C>(path: P, contents: C) -> anyhow::Result<()>
+where
+    P: AsRef<Path>,
+    C: AsRef<[u8]>,
+{
+    let path = path.as_ref();
+    let contents = contents.as_ref();
+    let mut file = fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(path)
+        .with_context(|| format!("failed to create file `{}`", path.display()))?;
+    file.write(contents)
+        .with_context(|| format!("failed to write to file `{}`", path.display()))?;
     Ok(())
 }
 

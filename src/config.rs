@@ -10,9 +10,11 @@ use crate::util::TomlValueExt;
 
 /// Project specific configuration.
 #[derive(Debug, Default, PartialEq, Deserialize, Serialize)]
-struct ProjectConfig {
+pub struct ProjectConfig {
     /// The title of the project.
-    title: Option<String>,
+    pub title: Option<String>,
+    /// The project's authors.
+    pub authors: Option<Vec<String>>,
 }
 
 /// The overall configuration for a project.
@@ -20,7 +22,7 @@ struct ProjectConfig {
 pub struct Config {
     /// Project specific configuration.
     #[serde(default)]
-    project: ProjectConfig,
+    pub project: ProjectConfig,
     /// The rest of the TOML configuration file.
     #[serde(flatten)]
     rest: toml::Value,
@@ -75,6 +77,7 @@ mod test {
             Config {
                 project: ProjectConfig {
                     title: Some("My Blog".to_string()),
+                    ..Default::default()
                 },
                 ..Default::default()
             }
@@ -115,6 +118,7 @@ mod test {
             Config {
                 project: ProjectConfig {
                     title: Some("My Blog".to_string()),
+                    ..Default::default()
                 },
                 rest: toml! {
                     [plugin]

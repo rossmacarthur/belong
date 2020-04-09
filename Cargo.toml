@@ -8,6 +8,7 @@ edition = "2018"
 
 [dependencies]
 anyhow = "1.0.28"
+casual = "0.1.1"
 chrono = { version = "0.4.11", features = ["serde"] }
 lazy_static = "1.4.0"
 open = "1.4.0"

@@ -1,7 +1,6 @@
 use std::{
     ffi::OsString,
-    fs,
-    io::Write,
+    fmt, fs,
     path::{self, Path, PathBuf},
     str,
 };
@@ -60,7 +59,11 @@ pub struct Page {
 /// A builder for `Project`.
 #[derive(Debug)]
 pub struct Builder {
+    /// The project's root directory.
     root_dir: PathBuf,
+    /// The configuration used to control how the project is built.
+    config: Config,
+    /// Whether to initialize a .gitignore file.
     gitignore: bool,
 }
 
@@ -90,6 +93,18 @@ impl Default for FrontMatter {
             kind: None,
             rest: toml::Value::default(),
         }
+    }
+}
+
+impl fmt::Display for FrontMatter {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "+++\n{}+++\n", toml::to_string_pretty(self).unwrap())
+    }
+}
+
+impl fmt::Display for RawPage {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}\n{}", self.front_matter, self.contents)
     }
 }
 
@@ -175,17 +190,61 @@ impl Builder {
     where
         P: Into<PathBuf>,
     {
-        let root_dir = root_dir.into();
         Self {
-            root_dir,
+            root_dir: root_dir.into(),
+            config: Config::default(),
             gitignore: true,
         }
+    }
+
+    /// The title for the project.
+    pub fn title<S>(mut self, title: S) -> Self
+    where
+        S: Into<String>,
+    {
+        self.config.project.title = Some(title.into());
+        self
+    }
+
+    /// Add an author for the project.
+    pub fn author<S>(mut self, author: S) -> Self
+    where
+        S: Into<String>,
+    {
+        self.config
+            .project
+            .authors
+            .get_or_insert_with(|| Vec::with_capacity(1))
+            .push(author.into());
+        self
     }
 
     /// Whether to create a `.gitignore` file.
     pub fn gitignore(mut self, gitignore: bool) -> Self {
         self.gitignore = gitignore;
         self
+    }
+
+    fn generate_hello_world_page() -> RawPage {
+        RawPage {
+            front_matter: FrontMatter {
+                title: Some("Hello World!".to_string()),
+                date: Some(chrono::Local::today().naive_local()),
+                kind: Some("post".to_string()),
+                ..Default::default()
+            },
+            contents: r#"Hello World! This is the first page on my site.
+
+I wrote some Rust code for the occasion:
+
+```rust
+fn main() {
+    println!("Hello, world!");
+}
+```
+"#
+            .to_string(),
+        }
     }
 
     /// Build the `Project` and return the built project.
@@ -195,31 +254,22 @@ impl Builder {
         fs::create_dir_all(&src_dir)
             .with_context(|| format!("failed to create src directory `{}`", src_dir.display()))?;
 
-        // Create .gitignore file.
         if self.gitignore {
-            let gitignore_file = self.root_dir.join(".gitignore");
-            let mut file = fs::OpenOptions::new()
-                .write(true)
-                .create_new(true)
-                .open(&gitignore_file)
-                .with_context(|| {
-                    format!(
-                        "failed to create gitignore file `{}`",
-                        gitignore_file.display()
-                    )
-                })?;
-            writeln!(file, "public").context("failed to write to gitignore file")?;
+            // Create .gitignore file.
+            util::write_new(self.root_dir.join(".gitignore"), "public\n")?;
         }
 
         // Create config file.
-        let config_file = self.root_dir.join("belong.toml");
-        let mut file = fs::OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .open(&config_file)
-            .with_context(|| format!("failed to create config file `{}`", config_file.display()))?;
-        file.write(&toml::to_vec(&Config::default()).unwrap())
-            .context("failed to write config to config file")?;
+        util::write_new(
+            self.root_dir.join("belong.toml"),
+            toml::to_vec(&self.config)?,
+        )?;
+
+        // Create Hello World! post.
+        util::write_new(
+            src_dir.join("hello-world.md"),
+            Self::generate_hello_world_page().to_string(),
+        )?;
 
         Ok(())
     }
