@@ -3,8 +3,16 @@ name = "belong"
 version = "0.1.0"
 authors = ["Ross MacArthur <ross@macarthur.io>"]
 edition = "2018"
+description = "Simple and flexible static site generator."
+readme = "README.md"
+homepage = "https://github.com/rossmacarthur/belong"
+repository = "https://github.com/rossmacarthur/belong"
+license = "MIT OR Apache-2.0"
+keywords = ["static", "site", "generator"]
+categories = ["command-line-utilities"]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[badges]
+maintenance = { status = "actively-developed" }
 
 [dependencies]
 anyhow = "1.0.28"
