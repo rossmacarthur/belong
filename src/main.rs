@@ -70,11 +70,11 @@ fn main() -> anyhow::Result<()> {
                  get started:\n"
             );
 
-            belong::Builder::new(current_dir)
+            belong::New::new(current_dir)
                 .title(title())
                 .author(author())
                 .gitignore(confirm("Would you like a .gitignore file to be created?"))
-                .build()
+                .init()
                 .context("failed to initialize project")?;
 
             println!(
@@ -84,9 +84,12 @@ fn main() -> anyhow::Result<()> {
         Command::Build { open } => {
             let project =
                 belong::Project::from_path(current_dir).context("failed to load project")?;
-            project.render().context("failed to render project")?;
+            let output = project.render().context("failed to render project")?;
+            output
+                .to_path()
+                .context("failed to write rendered project")?;
             if open {
-                open::that(project.output_dir().join("index.html"))
+                open::that(output.config().output_dir().join("index.html"))
                     .context("failed to open web page in browser")?;
             }
         }
