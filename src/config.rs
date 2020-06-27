@@ -135,10 +135,21 @@ impl Config {
 /////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
 
     use toml::toml;
+
+    #[test]
+    fn raw_config_default() {
+        assert_eq!(
+            RawConfig::default(),
+            RawConfig {
+                project: ProjectConfig::default(),
+                rest: toml::Value::default()
+            }
+        );
+    }
 
     #[test]
     fn raw_config_from_str_empty() {
