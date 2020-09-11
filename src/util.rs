@@ -1,14 +1,11 @@
 //! General purpose utility traits and functions.
 
-use std::collections::HashMap;
 use std::ffi::{OsStr, OsString};
 use std::fs;
 use std::io;
 use std::io::Write;
 use std::path::Path;
 use std::str::FromStr;
-
-use serde_json as json;
 
 use crate::prelude::*;
 
@@ -122,51 +119,4 @@ where
     file.write(contents)
         .with_context(|| format!("failed to write to file `{}`", path.display()))?;
     Ok(())
-}
-
-/// A [Tera template filter] to filter array values.
-///
-/// This is copied from Tera source code to allow `value` arguments to be null.
-/// In the case where `value` arguments are null, only null values will be
-/// filtered out.
-///
-/// # Examples
-///
-/// The following first filters out pages that don't have a `date`, so that the
-/// `sort` doesn't fail if there are pages without one.
-///
-/// ```text
-/// {% for page in pages | filter(attribute="date") | sort(attribute="date") %}
-///
-/// {% endfor %}
-/// ```
-///
-/// [Tera template filter]: ../../tera//trait.Filter.html
-pub fn filter(
-    value: &json::Value,
-    args: &HashMap<String, json::Value>,
-) -> tera::Result<json::Value> {
-    let arr = tera::try_get_value!("filter", "value", Vec<json::Value>, value);
-    let key = match args.get("attribute") {
-        Some(val) => tera::try_get_value!("filter", "attribute", String, val),
-        None => {
-            return Err(tera::Error::msg(
-                "The `filter` filter has to have an `attribute` argument",
-            ))
-        }
-    };
-    let value = args.get("value").unwrap_or(&json::Value::Null);
-    let json_pointer = ["/", &key.replace(".", "/")].concat();
-    let filtered = arr
-        .into_iter()
-        .filter(|v| {
-            let val = v.pointer(&json_pointer).unwrap_or(&json::Value::Null);
-            if value.is_null() {
-                !val.is_null()
-            } else {
-                val == value
-            }
-        })
-        .collect::<Vec<_>>();
-    Ok(tera::to_value(filtered).unwrap())
 }

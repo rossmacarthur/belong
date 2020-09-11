@@ -14,7 +14,6 @@ use crate::config::Config;
 use crate::output;
 use crate::prelude::*;
 use crate::renderer::Renderer;
-use crate::util;
 
 /// Namespaced predefined templates.
 mod template {
@@ -195,8 +194,6 @@ impl Theme {
         templates
             .add_raw_templates(self.raw_templates())
             .context("failed to register templates")?;
-        // override the `filter` filter to allow null value argument.
-        templates.register_filter("filter", util::filter);
 
         let mut base_ctx = tera::Context::new();
         base_ctx.insert("config", output.config().as_context());
