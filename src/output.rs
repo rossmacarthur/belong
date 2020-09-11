@@ -1,8 +1,12 @@
 //! Defines a rendered `Project`.
 
-use std::{borrow::Cow, fs, path::PathBuf};
+use std::borrow::Cow;
+use std::fs;
+use std::path::PathBuf;
 
-use crate::{config::Config, prelude::*, util};
+use crate::config::Config;
+use crate::prelude::*;
+use crate::util;
 
 /////////////////////////////////////////////////////////////////////////
 // Output definitions

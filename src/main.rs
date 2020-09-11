@@ -1,9 +1,11 @@
-use std::{env, process};
+use std::env;
+use std::process;
 
 use anyhow::Context;
 use casual::{confirm, prompt};
 
-use structopt::{clap::AppSettings, StructOpt};
+use structopt::clap::AppSettings;
+use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
 enum Command {

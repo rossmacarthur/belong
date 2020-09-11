@@ -1,16 +1,20 @@
 //! Defines how we render a `Project`.
 
-use std::{
-    borrow::Cow,
-    ffi::OsString,
-    fs,
-    path::{self, Path, PathBuf},
-};
+use std::borrow::Cow;
+use std::ffi::OsString;
+use std::fs;
+use std::path;
+use std::path::{Path, PathBuf};
 
 use serde_json as json;
 use serde_json::json;
 
-use crate::{config::Config, output, prelude::*, renderer::Renderer, util, Page};
+use crate::config::Config;
+use crate::output;
+use crate::prelude::*;
+use crate::renderer::Renderer;
+use crate::util;
+use crate::Page;
 
 /// Namespaced predefined templates.
 mod template {

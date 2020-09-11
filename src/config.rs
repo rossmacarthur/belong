@@ -1,9 +1,7 @@
 //! Configuration for a `Project`.
 
-use std::{
-    path::{Path, PathBuf},
-    str,
-};
+use std::path::{Path, PathBuf};
+use std::str;
 
 use serde::{Deserialize, Serialize};
 

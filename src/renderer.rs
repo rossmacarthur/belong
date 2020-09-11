@@ -8,7 +8,8 @@
 //! [`pulldown_cmark::html::push_html`]:
 //! ../../pulldown_cmark/html/fn.push_html.html
 
-use pulldown_cmark::{html, CowStr, Event, Options, Parser, Tag};
+use pulldown_cmark::html;
+use pulldown_cmark::{CowStr, Event, Options, Parser, Tag};
 use regex_macro::regex;
 
 /// Fix a URL for HTML rendering.

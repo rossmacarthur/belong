@@ -18,16 +18,16 @@ mod renderer;
 mod theme;
 mod util;
 
-use std::{
-    fmt, fs,
-    path::{Path, PathBuf},
-    str,
-};
+use std::fmt;
+use std::fs;
+use std::path::{Path, PathBuf};
+use std::str;
 
 use regex_macro::regex;
 use serde::{Deserialize, Serialize};
 
-use crate::{prelude::*, theme::Theme};
+use crate::prelude::*;
+use crate::theme::Theme;
 pub use config::Config;
 pub use output::Output;
 

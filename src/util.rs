@@ -1,13 +1,12 @@
 //! General purpose utility traits and functions.
 
-use std::{
-    collections::HashMap,
-    ffi::{OsStr, OsString},
-    fs, io,
-    io::Write,
-    path::Path,
-    str::FromStr,
-};
+use std::collections::HashMap;
+use std::ffi::{OsStr, OsString};
+use std::fs;
+use std::io;
+use std::io::Write;
+use std::path::Path;
+use std::str::FromStr;
 
 use serde_json as json;
 
