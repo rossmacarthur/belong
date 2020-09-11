@@ -66,7 +66,7 @@ impl str::FromStr for RawConfig {
 
 impl Config {
     /// Create a new default `Config`.
-    pub(crate) fn new(root_dir: PathBuf) -> Self {
+    pub fn new(root_dir: PathBuf) -> Self {
         Self {
             root_dir,
             inner: RawConfig::default(),
@@ -74,7 +74,7 @@ impl Config {
     }
 
     /// Load a `Config` from disk.
-    pub(crate) fn from_path(root_dir: PathBuf) -> Result<Self> {
+    pub fn from_path(root_dir: PathBuf) -> Result<Self> {
         let path = root_dir.join("belong.toml");
         let inner = RawConfig::from_path(&path)
             .with_context(|| format!("failed to load config file `{}`", path.display()))?;
@@ -92,13 +92,13 @@ impl Config {
     }
 
     /// Convert a `Config` to raw TOML bytes.
-    pub(crate) fn to_toml_vec(&self) -> Result<Vec<u8>> {
+    pub fn to_toml_vec(&self) -> Result<Vec<u8>> {
         Ok(toml::to_vec(&self.inner)?)
     }
 
     /// Return a type that implements `Serialize`. This can be used to serialize
     /// the `Config` to JSON.
-    pub(crate) fn as_context(&self) -> &impl Serialize {
+    pub fn as_context(&self) -> &impl Serialize {
         &self.inner
     }
 
@@ -118,12 +118,12 @@ impl Config {
     }
 
     /// Get a mutable reference to the project title.
-    pub(crate) fn title_mut(&mut self) -> &mut Option<String> {
+    pub fn title_mut(&mut self) -> &mut Option<String> {
         &mut self.inner.project.title
     }
 
     /// Get a mutable reference to the project authors.
-    pub(crate) fn authors_mut(&mut self) -> &mut Option<Vec<String>> {
+    pub fn authors_mut(&mut self) -> &mut Option<Vec<String>> {
         &mut self.inner.project.authors
     }
 }

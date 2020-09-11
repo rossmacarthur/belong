@@ -1,22 +1,4 @@
-//! `belong` is a simple and flexible static site generator.
-//!
-//! This crate provides a command line interface and is not intended to be used
-//! as a library. You can install the `belong` command line tool using
-//!
-//! ```sh
-//! cargo install belong
-//! ```
-//!
-//! Read up more at the project homepage [here][homepage].
-//!
-//! [homepage]: https://github.com/rossmacarthur/belong#belong
-
-mod config;
-mod output;
-mod prelude;
-mod renderer;
-mod theme;
-mod util;
+//! Core application code.
 
 use std::fmt;
 use std::fs;
@@ -26,10 +8,11 @@ use std::str;
 use regex_macro::regex;
 use serde::{Deserialize, Serialize};
 
+use crate::config::Config;
+use crate::output::Output;
 use crate::prelude::*;
 use crate::theme::Theme;
-pub use config::Config;
-pub use output::Output;
+use crate::util;
 
 /////////////////////////////////////////////////////////////////////////
 // Project definitions
@@ -37,7 +20,7 @@ pub use output::Output;
 
 /// Represents the TOML front matter of a Markdown document.
 #[derive(Debug, PartialEq, Deserialize, Serialize)]
-struct FrontMatter {
+pub struct FrontMatter {
     /// The title for this page.
     title: Option<String>,
     /// The description for this page.
@@ -62,13 +45,13 @@ struct RawPage {
 
 /// Represents a Markdown page in our project.
 #[derive(Debug, Default, PartialEq)]
-struct Page {
+pub struct Page {
     /// The location of the page's source file relative to the `src` directory.
-    path: PathBuf,
+    pub path: PathBuf,
     /// Front matter for the page.
-    front_matter: FrontMatter,
+    pub front_matter: FrontMatter,
     /// The contents of the page.
-    contents: String,
+    pub contents: String,
 }
 
 /// A builder to initialize a new project.

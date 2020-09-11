@@ -33,7 +33,7 @@ pub struct Output {
 /////////////////////////////////////////////////////////////////////////
 
 impl File {
-    pub(crate) fn new<S>(path: PathBuf, contents: S) -> Self
+    pub fn new<S>(path: PathBuf, contents: S) -> Self
     where
         S: Into<Cow<'static, str>>,
     {
@@ -44,7 +44,7 @@ impl File {
 
 impl Output {
     /// Create a new `Output`.
-    pub(crate) fn new(config: Config) -> Self {
+    pub fn new(config: Config) -> Self {
         Self {
             config,
             files: Vec::new(),
@@ -57,7 +57,7 @@ impl Output {
     }
 
     /// Add a new `File` to the `Output`.
-    pub(crate) fn push_file(&mut self, file: File) -> &mut Self {
+    pub fn push_file(&mut self, file: File) -> &mut Self {
         self.files.push(file);
         self
     }

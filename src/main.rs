@@ -1,3 +1,11 @@
+mod app;
+mod config;
+mod output;
+mod prelude;
+mod renderer;
+mod theme;
+mod util;
+
 use std::env;
 use std::process;
 
@@ -72,7 +80,7 @@ fn main() -> anyhow::Result<()> {
                  get started:\n"
             );
 
-            belong::New::new(current_dir)
+            app::New::new(current_dir)
                 .title(title())
                 .author(author())
                 .gitignore(confirm("Would you like a .gitignore file to be created?"))
@@ -84,8 +92,7 @@ fn main() -> anyhow::Result<()> {
             )
         }
         Command::Build { open } => {
-            let project =
-                belong::Project::from_path(current_dir).context("failed to load project")?;
+            let project = app::Project::from_path(current_dir).context("failed to load project")?;
             let output = project.render().context("failed to render project")?;
             output
                 .to_path()

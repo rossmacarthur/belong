@@ -9,12 +9,12 @@ use std::path::{Path, PathBuf};
 use serde_json as json;
 use serde_json::json;
 
+use crate::app::Page;
 use crate::config::Config;
 use crate::output;
 use crate::prelude::*;
 use crate::renderer::Renderer;
 use crate::util;
-use crate::Page;
 
 /// Namespaced predefined templates.
 mod template {
@@ -99,7 +99,7 @@ impl Page {
     }
 
     /// Naïve way of determining the path to the root of the project. This only
-    /// works because `self.path` is relative to the root of the project.
+    /// works because `self.path()` is relative to the root of the project.
     fn url_path_to_root(&self) -> Result<String> {
         self.path
             .parent()
@@ -154,7 +154,7 @@ impl Theme {
     ///
     /// If corresponding templates are present in the directory then they will
     /// override the default templates.
-    pub(crate) fn from_path(theme_dir: &Path) -> Result<Self> {
+    pub fn from_path(theme_dir: &Path) -> Result<Self> {
         // Load the templates from disk, or set defaults.
         let templates = Self::load_theme_files_from_path(
             theme_dir,
@@ -188,7 +188,7 @@ impl Theme {
     }
 
     /// Render project pages using the given `Config`.
-    pub(crate) fn render(self, config: Config, pages: Vec<Page>) -> Result<output::Output> {
+    pub fn render(self, config: Config, pages: Vec<Page>) -> Result<output::Output> {
         let mut output = output::Output::new(config);
 
         let mut templates = tera::Tera::default();
