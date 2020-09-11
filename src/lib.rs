@@ -24,7 +24,7 @@ use std::{
     str,
 };
 
-use lazy_static::lazy_static;
+use regex_macro::regex;
 use serde::{Deserialize, Serialize};
 
 use crate::{prelude::*, theme::Theme};
@@ -123,12 +123,9 @@ impl str::FromStr for RawPage {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        lazy_static! {
-            static ref RE: regex::Regex =
-                regex::Regex::new(r"^\s*\+\+\+((?s).*(?-s))\+\+\+(\r?\n)+((?s).*(?-s))$").unwrap();
-        }
+        let re = regex!(r"^\s*\+\+\+((?s).*(?-s))\+\+\+(\r?\n)+((?s).*(?-s))$");
         let mut contents = s;
-        let front_matter = match RE.captures(contents) {
+        let front_matter = match re.captures(contents) {
             Some(captures) => {
                 contents = captures.get(3).unwrap().as_str();
                 toml::from_str(captures.get(1).unwrap().as_str())

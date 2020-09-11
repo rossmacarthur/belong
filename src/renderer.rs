@@ -8,18 +8,15 @@
 //! [`pulldown_cmark::html::push_html`]:
 //! ../../pulldown_cmark/html/fn.push_html.html
 
-use lazy_static::lazy_static;
 use pulldown_cmark::{html, CowStr, Event, Options, Parser, Tag};
-use regex::Regex;
+use regex_macro::regex;
 
 /// Fix a URL for HTML rendering.
 ///
 /// For example `path/to/file.md#heading` becomes `path/to/file.html#heading`.
 fn fix_markdown_url(url: CowStr) -> CowStr {
-    lazy_static! {
-        static ref MD_LINK: Regex = Regex::new(r"(?P<link>.*)\.md(?P<anchor>#.*)?").unwrap();
-    }
-    if let Some(captures) = MD_LINK.captures(&url) {
+    let re = regex!(r"(?P<link>.*)\.md(?P<anchor>#.*)?");
+    if let Some(captures) = re.captures(&url) {
         CowStr::from(format!(
             "{link}.html{anchor}",
             link = &captures["link"],

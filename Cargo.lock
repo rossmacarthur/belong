@@ -48,10 +48,10 @@ dependencies = [
  "anyhow",
  "casual",
  "chrono",
- "lazy_static",
  "open",
  "pulldown-cmark",
  "regex",
+ "regex-macro",
  "serde",
  "serde_json",
  "structopt",
@@ -350,6 +350,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "once_cell"
+version = "1.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "260e51e7efe62b592207e9e13a68e43692a7a279171d6ba57abd208bf23645ad"
+
+[[package]]
 name = "opaque-debug"
 version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -539,6 +545,16 @@ dependencies = [
  "memchr",
  "regex-syntax",
  "thread_local",
+]
+
+[[package]]
+name = "regex-macro"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "34afee392f63f278b9b655a57837c1cca48344de310c6b03f62cd73e219cb1c9"
+dependencies = [
+ "once_cell",
+ "regex",
 ]
 
 [[package]]
