@@ -1,14 +1,14 @@
 {% extends "base.html" %}
 
 {% block content %}
-  <div class="py-2">
+  <div>
+    {% if this.meta.title %}
+      <h2 class="page-title">{{ this.meta.title }}</h2>
+    {% endif %}
     {% if this.meta.date %}
       <div>
-        <small class="text-muted">{{ this.meta.date | date(format="%b %d, %Y") }}</small>
+        <p class="text-muted">{{ this.meta.date | date(format="%b %d, %Y") }}</p>
       </div>
-    {% endif %}
-    {% if this.meta.title %}
-      <h1 class="page-title">{{ this.meta.title }}</h1>
     {% endif %}
   </div>
   {{ this.content | safe }}
