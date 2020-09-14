@@ -80,7 +80,7 @@ fn main() -> anyhow::Result<()> {
                  get started:\n"
             );
 
-            app::New::new(current_dir)
+            app::Builder::new(current_dir)
                 .title(title())
                 .author(author())
                 .gitignore(confirm("Would you like a .gitignore file to be created?"))

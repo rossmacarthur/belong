@@ -56,7 +56,7 @@ pub struct Page {
 
 /// A builder to initialize a new project.
 #[derive(Debug)]
-pub struct New {
+pub struct Builder {
     /// The config used to control how the project is built.
     config: Config,
     /// Whether to initialize a .gitignore file.
@@ -136,8 +136,8 @@ impl Page {
     }
 }
 
-impl New {
-    /// Create a new `New`.
+impl Builder {
+    /// Create a new `Builder`.
     pub fn new<P>(root_dir: P) -> Self
     where
         P: Into<PathBuf>,
