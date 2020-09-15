@@ -157,16 +157,23 @@ fn find_directives(contents: &str) -> Result<Vec<Directive>> {
     for captures in re.captures_iter(contents) {
         let name = captures.name("name").unwrap().as_str();
         let args = captures.name("args").unwrap().as_str();
-        let directive = match name {
-            "include" => {
-                let kind = DirectiveKind::Include(
-                    Include::from_str(args).context("failed to parse include directive")?,
-                );
-                Directive { kind, captures }
-            }
-            name => bail!("unrecognized directive `{}`", name),
+        match name {
+            "include" => match Include::from_str(args) {
+                Ok(include) => {
+                    let kind = DirectiveKind::Include(include);
+                    directives.push(Directive { kind, captures })
+                }
+                err => log::warn!(
+                    "{:?}\n",
+                    err.with_context(|| format!(
+                        "failed to parse include directive `{}`",
+                        captures.get(0).unwrap().as_str()
+                    ))
+                    .unwrap_err()
+                ),
+            },
+            name => log::warn!("unrecognized directive `{}`", name),
         };
-        directives.push(directive);
     }
     Ok(directives)
 }

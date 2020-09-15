@@ -70,8 +70,9 @@ fn author() -> String {
     }
 }
 
-fn main() -> anyhow::Result<()> {
+fn run() -> anyhow::Result<()> {
     let Opt { command } = Opt::from_args();
+    femme::with_level(femme::LevelFilter::Debug);
     let current_dir = env::current_dir().context("could not determine current directory")?;
 
     match command {
@@ -109,4 +110,11 @@ fn main() -> anyhow::Result<()> {
     }
 
     Ok(())
+}
+
+fn main() {
+    if let Err(err) = run() {
+        log::error!("{:?}", err);
+        process::exit(2);
+    }
 }
