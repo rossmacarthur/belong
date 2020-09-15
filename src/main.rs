@@ -2,6 +2,7 @@ mod app;
 mod config;
 mod output;
 mod prelude;
+mod preprocess;
 mod renderer;
 mod theme;
 mod util;
@@ -92,7 +93,10 @@ fn main() -> anyhow::Result<()> {
             )
         }
         Command::Build { open } => {
-            let project = app::Project::from_path(current_dir).context("failed to load project")?;
+            let project = app::Project::from_path(current_dir)
+                .context("failed to load project")?
+                .preprocess()
+                .context("failed to preprocess project")?;
             let output = project.render().context("failed to render project")?;
             output
                 .to_path()

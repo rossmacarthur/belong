@@ -125,7 +125,7 @@ impl str::FromStr for RawPage {
 
 impl Page {
     /// Load a `Page` from the given path.
-    fn from_path(src_dir: &Path, full_path: &Path) -> Result<Self> {
+    pub fn from_path(src_dir: &Path, full_path: &Path) -> Result<Self> {
         let raw_page = RawPage::from_path(&full_path)?;
         let path = full_path.strip_prefix(&src_dir).unwrap().to_path_buf();
         Ok(Self {
@@ -242,6 +242,26 @@ impl Project {
                 Page::from_path(&src_dir, e.path())
                     .with_context(|| format!("failed to load page `{}`", e.path().display()))
             })
+            .collect::<Result<_, _>>()?;
+
+        Ok(Self {
+            config,
+            theme,
+            pages,
+        })
+    }
+
+    /// Preprocess a `Project`.
+    pub fn preprocess(self) -> Result<Self> {
+        let Self {
+            config,
+            theme,
+            pages,
+        } = self;
+
+        let pages = pages
+            .into_iter()
+            .map(|page| page.preprocess(&config))
             .collect::<Result<_, _>>()?;
 
         Ok(Self {
