@@ -189,7 +189,7 @@ fn preprocess(config: &Config, path: &Path, contents: &str) -> Result<String> {
                 kind: DirectiveKind::Include(include),
                 ..
             } => {
-                let page_path = config.root_dir().join(&path);
+                let page_path = config.src_dir().join(&path);
                 new_contents.push_str(&include.read(&page_path)?);
             }
         }
@@ -316,7 +316,7 @@ fn main() {
 "#,
         )?;
 
-        let page = Page::from_path(&root_dir, &*page_path)?;
+        let page = Page::from_path(&root_dir.join("src"), &page_path)?;
         assert_eq!(page.contents, page_contents);
 
         let page = page.preprocess(&Config::new(root_dir))?;
