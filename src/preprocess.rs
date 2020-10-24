@@ -22,6 +22,15 @@ enum LineRange {
     RangeFull(RangeFull),
 }
 
+/// How to select included text.
+#[derive(Debug, Clone, PartialEq)]
+enum Select {
+    /// Select using an anchor.
+    Anchor(String),
+    /// Select using a line range.
+    LineRange(LineRange),
+}
+
 /// Represents an include preprocessing directive.
 ///
 /// For example
@@ -32,7 +41,7 @@ enum LineRange {
 #[derive(Debug, Clone, PartialEq)]
 struct Include {
     path: PathBuf,
-    line_range: LineRange,
+    select: Select,
 }
 
 #[derive(Debug)]
@@ -116,31 +125,70 @@ impl LineRange {
     }
 }
 
+fn extract_anchor(contents: String, anchor: String) -> String {
+    let start = regex!(r"ANCHOR:\s*(?P<name>[\w_-]+)");
+    let end = regex!(r"ANCHOR_END:\s*(?P<name>[\w_-]+)");
+    let mut retained = Vec::new();
+    let mut found = false;
+    for line in contents.lines() {
+        if found {
+            match end.captures(line) {
+                Some(captures) => {
+                    if captures["name"] == anchor {
+                        found = false;
+                    }
+                }
+                None => {
+                    if !start.is_match(line) {
+                        retained.push(line);
+                    }
+                }
+            }
+        } else if let Some(captures) = start.captures(line) {
+            if captures["name"] == anchor {
+                found = true;
+            }
+        }
+    }
+    retained.join("\n")
+}
+
+fn extract_line_range(contents: String, line_range: LineRange) -> String {
+    let start = line_range.start();
+    let end = line_range.end();
+    let lines = contents.lines().skip(start);
+    match end {
+        Some(end) => lines.take(end.saturating_sub(start)).collect::<Vec<_>>(),
+        None => lines.collect::<Vec<_>>(),
+    }
+    .join("\n")
+}
+
 impl Include {
     fn from_str(args: &str) -> Result<Self> {
-        let mut parts = args.splitn(2, ':');
-        let path = parts.next().unwrap().into();
-        let line_range = LineRange::from_str(parts.next())?;
-        Ok(Self { path, line_range })
-    }
-
-    fn extract(contents: String, line_range: LineRange) -> String {
-        let start = line_range.start();
-        let end = line_range.end();
-        let lines = contents.lines().skip(start);
-        match end {
-            Some(end) => lines.take(end.saturating_sub(start)).collect::<Vec<_>>(),
-            None => lines.collect::<Vec<_>>(),
-        }
-        .join("\n")
+        let (path, select) = if args.contains('@') {
+            let mut parts = args.splitn(2, '@');
+            let path = parts.next().unwrap().into();
+            let anchor = parts.next().context("expected anchor name")?.into();
+            (path, Select::Anchor(anchor))
+        } else {
+            let mut parts = args.splitn(2, ':');
+            let path = parts.next().unwrap().into();
+            let line_range = LineRange::from_str(parts.next())?;
+            (path, Select::LineRange(line_range))
+        };
+        Ok(Self { path, select })
     }
 
     fn read(self, page_path: &Path) -> Result<String> {
-        let Self { path, line_range } = self;
+        let Self { path, select } = self;
         let path = page_path.parent().unwrap().join(path);
         let contents = fs::read_to_string(&path)
             .with_context(|| format!("failed to read from `{}`", path.display()))?;
-        Ok(Self::extract(contents, line_range))
+        Ok(match select {
+            Select::Anchor(anchor) => extract_anchor(contents, anchor),
+            Select::LineRange(line_range) => extract_line_range(contents, line_range),
+        })
     }
 }
 
@@ -155,8 +203,8 @@ fn find_directives(contents: &str) -> Result<Vec<Directive>> {
     let re = regex!(r"\{\{\s*#(?P<name>[a-zA-Z0-9_]+)\s+((?P<args>.*)\s*)\}\}");
     let mut directives = Vec::new();
     for captures in re.captures_iter(contents) {
-        let name = captures.name("name").unwrap().as_str();
-        let args = captures.name("args").unwrap().as_str();
+        let name = &captures["name"];
+        let args = &captures["args"];
         match name {
             "include" => match Include::from_str(args) {
                 Ok(include) => {
@@ -244,56 +292,56 @@ mod tests {
             Include::from_str("listing.rs")?,
             Include {
                 path: "listing.rs".into(),
-                line_range: LineRange::RangeFull(..)
+                select: Select::LineRange(LineRange::RangeFull(..))
             }
         );
         assert_eq!(
             Include::from_str("listing.rs:")?,
             Include {
                 path: "listing.rs".into(),
-                line_range: LineRange::RangeFull(..)
+                select: Select::LineRange(LineRange::RangeFull(..))
             }
         );
         assert_eq!(
             Include::from_str("listing.rs:5:10")?,
             Include {
                 path: "listing.rs".into(),
-                line_range: LineRange::Range(4..10)
+                select: Select::LineRange(LineRange::Range(4..10))
             }
         );
         Ok(())
     }
 
     #[test]
-    fn include_extract() {
+    fn include_extract_line_range() {
         assert_eq!(
-            Include::extract("line 1\nline 2\nline 3".into(), LineRange::RangeFull(..)),
+            extract_line_range("line 1\nline 2\nline 3".into(), LineRange::RangeFull(..)),
             "line 1\nline 2\nline 3",
         );
         assert_eq!(
-            Include::extract("line 1\nline 2\nline 3".into(), LineRange::Range(0..1)),
+            extract_line_range("line 1\nline 2\nline 3".into(), LineRange::Range(0..1)),
             "line 1",
         );
         assert_eq!(
-            Include::extract("line 1\nline 2\nline 3".into(), LineRange::RangeFrom(2..)),
+            extract_line_range("line 1\nline 2\nline 3".into(), LineRange::RangeFrom(2..)),
             "line 3",
         );
         assert_eq!(
-            Include::extract("line 1\nline 2\nline 3".into(), LineRange::RangeFrom(3..)),
+            extract_line_range("line 1\nline 2\nline 3".into(), LineRange::RangeFrom(3..)),
             "",
         );
         assert_eq!(
-            Include::extract("line 1\nline 2\nline 3".into(), LineRange::RangeTo(..0)),
+            extract_line_range("line 1\nline 2\nline 3".into(), LineRange::RangeTo(..0)),
             "",
         );
         assert_eq!(
-            Include::extract("line 1\nline 2\nline 3".into(), LineRange::RangeTo(..2)),
+            extract_line_range("line 1\nline 2\nline 3".into(), LineRange::RangeTo(..2)),
             "line 1\nline 2",
         );
     }
 
     #[test]
-    fn page_preprocess() -> Result<()> {
+    fn page_preprocess_include_line_range() -> Result<()> {
         let temp_dir = tempfile::tempdir()?;
         let root_dir = temp_dir.path().to_path_buf();
         fs::create_dir_all(root_dir.join("src"))?;
@@ -312,6 +360,51 @@ mod tests {
 fn main() {
     println!("Hello World!");
 }
+
+"#,
+        )?;
+
+        let page = Page::from_path(&root_dir.join("src"), &page_path)?;
+        assert_eq!(page.contents, page_contents);
+
+        let page = page.preprocess(&Config::new(root_dir))?;
+        assert_eq!(
+            page.contents,
+            r#"
+
+```rust
+fn main() {
+    println!("Hello World!");
+}
+```
+"#
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn page_preprocess_include_anchor() -> Result<()> {
+        let temp_dir = tempfile::tempdir()?;
+        let root_dir = temp_dir.path().to_path_buf();
+        fs::create_dir_all(root_dir.join("src"))?;
+        let page_path = root_dir.join("src").join("page.md");
+        let page_contents = r#"
+
+```rust
+{{#include ../listing.rs@main}}
+```
+"#;
+        fs::write(&page_path, page_contents)?;
+        fs::write(
+            root_dir.join("listing.rs"),
+            r#"
+
+// ANCHOR: main
+fn main() {
+    println!("Hello World!");
+}
+// ANCHOR_END: main
 
 "#,
         )?;
